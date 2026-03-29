@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mascot.png" width="400" alt="Pheme">
+</p>
+
 # Pheme
 
 Pheme is a sidecar gossip daemon that monitors a co-located service and
