@@ -41,31 +41,30 @@ linters:
 
     # Code formatting issues
     - lll
-  fast: false
 
-linters-settings:
-  govet:
-    enable:
-      - shadow
+  settings:
+    govet:
+      enable:
+        - shadow
 
-  gocyclo:
-    min-complexity: 25
+    gocyclo:
+      min-complexity: 25
 
-  dupl:
-    threshold: 100
+    dupl:
+      threshold: 100
 
-  misspell:
-    locale: US
+    misspell:
+      locale: US
 
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - hugeParam
-      - rangeValCopy
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+      disabled-checks:
+        - wrapperFunc
+        - hugeParam
+        - rangeValCopy
 
-  lll:
-    line-length: 140
+    lll:
+      line-length: 140
