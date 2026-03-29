@@ -1,0 +1,71 @@
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  concurrency: 4
+
+linters:
+  exclusions:
+    paths:
+      - tests
+  enable:
+    # Code correctness and bug prevention
+    - govet
+    - ineffassign
+    - unused
+    - ireturn
+    - misspell
+
+    # Performance optimizations
+    - prealloc
+    - gocritic
+    - noctx
+
+    # Code complexity management
+    - gocyclo
+    - dupl
+    - unparam
+    - nakedret
+    - dogsled
+    - gocognit
+
+    # Security checks
+    - gosec
+
+    # Specific checks
+    - copyloopvar
+    - unconvert
+    - gochecknoinits
+    - testpackage
+
+    # Code formatting issues
+    - lll
+  fast: false
+
+linters-settings:
+  govet:
+    enable:
+      - shadow
+
+  gocyclo:
+    min-complexity: 25
+
+  dupl:
+    threshold: 100
+
+  misspell:
+    locale: US
+
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - wrapperFunc
+      - hugeParam
+      - rangeValCopy
+
+  lll:
+    line-length: 140

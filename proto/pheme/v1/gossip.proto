@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package pheme.v1;
+
+option go_package = "github.com/vladyslavpavlenko/pheme/internal/gen/pheme/v1;phemev1";
+
+enum NodeState {
+  NODE_STATE_UNSPECIFIED = 0;
+  NODE_STATE_ALIVE       = 1;
+  NODE_STATE_SUSPECT     = 2;
+  NODE_STATE_DEAD        = 3;
+  NODE_STATE_LEFT        = 4;
+}
+
+message StateUpdate {
+  string    node_id = 1;
+  NodeState state   = 2;
+  uint64    version = 3;
+  string    zone    = 4;
+  string    addr    = 5;
+}
+
+message Ping {
+  string               sender_id    = 1;
+  uint64               sequence_num = 2;
+  repeated StateUpdate updates      = 3;
+}
+
+message Ack {
+  string               responder_id = 1;
+  uint64               sequence_num = 2;
+  repeated StateUpdate updates      = 3;
+}
+
+message PingReq {
+  string sender_id    = 1;
+  string target_id    = 2;
+  uint64 sequence_num = 3;
+}
+
+message GossipMessage {
+  oneof payload {
+    Ping    ping     = 1;
+    Ack     ack      = 2;
+    PingReq ping_req = 3;
+  }
+}

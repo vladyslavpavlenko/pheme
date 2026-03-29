@@ -1,0 +1,88 @@
+version: "3"
+
+vars:
+  BINARY: pheme
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+
+  buf:generate:
+    desc: Generate protobuf Go code
+    cmds:
+      - buf generate
+    sources:
+      - proto/**/*.proto
+      - buf.gen.yaml
+    generates:
+      - internal/gen/**/*.pb.go
+
+  buf:breaking:
+    desc: Check for proto breaking changes against main
+    cmds:
+      - buf breaking --against '.git#branch=main'
+
+  lint:
+    desc: Run all linters
+    deps: [lint:proto, lint:go]
+
+  lint:proto:
+    desc: Lint proto files
+    cmds:
+      - buf lint
+
+  lint:go:
+    desc: Lint Go code
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -race -v -count=1 ./...
+
+  build:
+    desc: Build the binary
+    cmds:
+      - CGO_ENABLED=0 go build -o {{.BINARY}} ./main
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BINARY}}"
+
+  run:
+    desc: Run the binary with default config
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}} {{.CLI_ARGS}}
+
+  ci:
+    desc: Run the full CI pipeline locally
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -f {{.BINARY}}
+
+  docker:build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.BINARY}}:latest .
+
+  docker:up:
+    desc: Start docker-compose cluster
+    cmds:
+      - docker compose up --build -d
+
+  docker:down:
+    desc: Stop docker-compose cluster
+    cmds:
+      - docker compose down

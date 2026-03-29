@@ -1,0 +1,21 @@
+bind_addr: "0.0.0.0:7946"
+join_addrs: []
+zone: "default"
+node_id: ""
+
+gossip_interval: 200ms
+local_weight: 0.7
+remote_weight: 0.3
+indirect_checks: 3
+
+suspicion_multiplier: 4
+rtt_window_size: 50
+
+bloom_expected_items: 10000
+bloom_fp_rate: 0.01
+bloom_rotation_interval: 60s
+
+healthcheck_url: "http://localhost:8080/health"
+healthcheck_interval: 5s
+
+api_addr: "0.0.0.0:7947"

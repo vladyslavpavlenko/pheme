@@ -1,0 +1,7 @@
+.idea/
+.task
+*.exe
+*.test
+*.out
+/bin/
+vendor/
