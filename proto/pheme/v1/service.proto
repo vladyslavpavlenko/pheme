@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package pheme.v1;
 
-option go_package = "github.com/vladyslavpavlenko/pheme/internal/gen/pheme/v1;phemev1";
-
 import "pheme/v1/gossip.proto";
 
+option go_package = "github.com/vladyslavpavlenko/pheme/internal/gen/pheme/v1;phemev1";
+
 service ClusterService {
-  rpc GetClusterStatus (GetClusterStatusRequest) returns (GetClusterStatusResponse);
-  rpc GetMembers       (GetMembersRequest)       returns (GetMembersResponse);
-  rpc WatchState       (WatchStateRequest)       returns (stream WatchStateResponse);
+  rpc GetClusterStatus(GetClusterStatusRequest) returns (GetClusterStatusResponse);
+  rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
+  rpc WatchState(WatchStateRequest) returns (stream WatchStateResponse);
 }
 
 message GetClusterStatusRequest {}
@@ -27,17 +27,17 @@ message GetMembersResponse {
 message WatchStateRequest {}
 
 message WatchStateResponse {
-  string    node_id = 1;
-  string    addr    = 2;
-  NodeState state   = 3;
-  string    zone    = 4;
-  uint64    version = 5;
+  string node_id = 1;
+  string addr = 2;
+  NodeState state = 3;
+  string zone = 4;
+  uint64 version = 5;
 }
 
 message NodeInfo {
-  string    node_id = 1;
-  string    addr    = 2;
-  NodeState state   = 3;
-  string    zone    = 4;
-  uint64    version = 5;
+  string node_id = 1;
+  string addr = 2;
+  NodeState state = 3;
+  string zone = 4;
+  uint64 version = 5;
 }
