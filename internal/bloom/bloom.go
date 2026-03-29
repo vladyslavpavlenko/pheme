@@ -143,10 +143,10 @@ func Fingerprint(nodeID string, state int32, version uint64) []byte {
 	return h[:]
 }
 
-func hash(data []byte) (uint64, uint64) {
+func hash(data []byte) (h1, h2 uint64) {
 	h := sha256.Sum256(data)
-	h1 := binary.BigEndian.Uint64(h[0:8])
-	h2 := binary.BigEndian.Uint64(h[8:16])
+	h1 = binary.BigEndian.Uint64(h[0:8])
+	h2 = binary.BigEndian.Uint64(h[8:16])
 	if h2 == 0 {
 		h2 = 1
 	}

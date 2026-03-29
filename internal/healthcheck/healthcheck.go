@@ -111,7 +111,7 @@ func (c *Checker) check() {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url, http.NoBody)
 	if err != nil {
 		c.transition(StatusUnhealthy)
 		c.l.Warn("could not create a health check request", logger.Error(err))
