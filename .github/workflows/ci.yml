@@ -16,11 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bufbuild/buf-action@v1
-        with:
-          lint: true
-          breaking: true
-          breaking_against: ${{ github.event.repository.clone_url }}#branch=main
+      - uses: bufbuild/buf-setup-action@v1
+
+      - run: buf lint
+      - run: buf format --diff --exit-code
+      - run: buf breaking --against 'https://github.com/vladyslavpavlenko/pheme.git#branch=main'
 
   lint:
     name: Lint
