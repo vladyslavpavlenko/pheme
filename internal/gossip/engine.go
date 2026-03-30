@@ -119,14 +119,32 @@ func (e *Engine) gossipLoop() {
 	ticker := time.NewTicker(e.cfg.GossipInterval)
 	defer ticker.Stop()
 
+	rejoinTicker := time.NewTicker(5 * time.Second)
+	defer rejoinTicker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
 			e.doGossipRound()
+		case <-rejoinTicker.C:
+			e.maybeRejoin()
 		case <-e.stopCh:
 			return
 		}
 	}
+}
+
+// maybeRejoin re-attempts joining seed nodes when this node is isolated.
+func (e *Engine) maybeRejoin() {
+	if len(e.cfg.JoinAddrs) == 0 {
+		return
+	}
+	members := e.members.AliveMembers()
+	if len(members) > 1 {
+		return
+	}
+	e.l.Info("node is isolated, re-attempting join", logger.Param("seeds", e.cfg.JoinAddrs))
+	_ = e.Join(e.cfg.JoinAddrs)
 }
 
 func (e *Engine) doGossipRound() {
@@ -348,9 +366,22 @@ func (e *Engine) handleAck(ack *pb.Ack) {
 		rtt := time.Since(pending.sentAt)
 		e.detector.RecordRTT(pending.target, rtt)
 
-		n, exists := e.members.Get(pending.target)
-		if exists && n.State == pb.NodeState_NODE_STATE_SUSPECT {
-			e.members.SetState(pending.target, pb.NodeState_NODE_STATE_ALIVE)
+		// Only refute gossip-level suspicion when the target still
+		// considers itself ALIVE. If the target self-declared SUSPECT
+		// (e.g. local health check failure), respect that — the ack's
+		// piggybacked updates already carry the authoritative state.
+		targetSelfState := pb.NodeState_NODE_STATE_UNSPECIFIED
+		for _, u := range ack.Updates {
+			if u.NodeId == pending.target {
+				targetSelfState = u.State
+				break
+			}
+		}
+		if targetSelfState == pb.NodeState_NODE_STATE_ALIVE {
+			n, exists := e.members.Get(pending.target)
+			if exists && n.State == pb.NodeState_NODE_STATE_SUSPECT {
+				e.members.SetState(pending.target, pb.NodeState_NODE_STATE_ALIVE)
+			}
 		}
 	}
 }
