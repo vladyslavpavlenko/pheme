@@ -4,7 +4,3 @@ plugins:
     out: internal/gen
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go
-    out: internal/gen
-    opt:
-      - paths=source_relative

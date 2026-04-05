@@ -15,7 +15,7 @@ SWIM-like protocol over UDP.
 - **Adaptive failure detection** — per-node RTT tracking tunes suspicion and ping timeouts.
 - **Bloom filter deduplication** — avoids re-processing recently seen state updates.
 - **Local health checks** — polls a configurable HTTP endpoint; transitions the node through alive → suspect → dead.
-- **HTTP/gRPC APIs** — query cluster status, list alive members, stream state changes.
+- **HTTP API** — query cluster status, list alive members.
 
 ## Quick Start
 
@@ -26,8 +26,8 @@ task build
 # run with example config
 ./pheme -config config.example.yaml
 
-# or via Docker Compose (3-node cluster)
-task docker:up
+# run tests
+task test
 ```
 
 ## Configuration
@@ -42,4 +42,3 @@ Settings can be overridden with environment variables prefixed with `PHEME_`
 |------|----------|---------|
 | 7946 | UDP | Gossip protocol |
 | 7947 | TCP | HTTP API |
-| 7948 | TCP | gRPC API |

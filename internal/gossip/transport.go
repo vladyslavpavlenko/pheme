@@ -13,6 +13,12 @@ import (
 
 const maxUDPPacketSize = 1400
 
+// TransportStats holds cumulative byte counters for the transport layer.
+type TransportStats struct {
+	BytesSent uint64
+	BytesRecv uint64
+}
+
 type Transport struct {
 	conn *net.UDPConn
 	l    *logger.Logger
@@ -20,6 +26,9 @@ type Transport struct {
 	msgCh  chan *incomingMsg
 	closed atomic.Bool
 	wg     sync.WaitGroup
+
+	bytesSent atomic.Uint64
+	bytesRecv atomic.Uint64
 }
 
 type incomingMsg struct {
@@ -64,6 +73,8 @@ func (t *Transport) readLoop() {
 			continue
 		}
 
+		t.bytesRecv.Add(uint64(n))
+
 		msg := &pb.GossipMessage{}
 		if err := proto.Unmarshal(buf[:n], msg); err != nil {
 			t.l.Debug("unmarshal error", logger.Error(err), logger.Param("from", from))
@@ -97,12 +108,22 @@ func (t *Transport) SendTo(msg *pb.GossipMessage, addr string) error {
 		t.l.Warn("message exceeds MTU, sending anyway", logger.Param("size", len(data)))
 	}
 
-	_, err = t.conn.WriteToUDP(data, udpAddr)
+	written, err := t.conn.WriteToUDP(data, udpAddr)
+	if err == nil {
+		t.bytesSent.Add(uint64(written))
+	}
 	return err
 }
 
 func (t *Transport) LocalAddr() string {
 	return t.conn.LocalAddr().String()
+}
+
+func (t *Transport) Stats() TransportStats {
+	return TransportStats{
+		BytesSent: t.bytesSent.Load(),
+		BytesRecv: t.bytesRecv.Load(),
+	}
 }
 
 func (t *Transport) Close() error {
