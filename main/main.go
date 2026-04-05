@@ -19,7 +19,7 @@ func main() {
 	configPath := flag.String("config", "", "path to YAML config file")
 	nodeID := flag.String("id", "", "node ID (overrides config)")
 	bindAddr := flag.String("bind", "", "gossip bind address (overrides config)")
-	apiAddr := flag.String("api", "", "HTTP/gRPC API address (overrides config)")
+	apiAddr := flag.String("api", "", "HTTP API address (overrides config)")
 	zone := flag.String("zone", "", "zone label (overrides config)")
 	flag.Parse()
 

@@ -85,6 +85,10 @@ func (e *Engine) Members() *membership.List {
 	return e.members
 }
 
+func (e *Engine) Stats() TransportStats {
+	return e.transport.Stats()
+}
+
 func (e *Engine) Join(addrs []string) error {
 	self := e.members.GetSelf()
 	for _, addr := range addrs {
