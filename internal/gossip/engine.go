@@ -451,19 +451,20 @@ func (e *Engine) handlePingReq(req *pb.PingReq, fromAddr string) {
 }
 
 func (e *Engine) getFilteredUpdates() []*pb.StateUpdate {
-	all := e.members.GetUpdates()
-	var filtered []*pb.StateUpdate
-	totalSize := 0
-	maxPayload := maxUDPPacketSize - 200
-
-	for _, u := range all {
-		estimatedSize := 20 + len(u.NodeId) + len(u.Zone) + len(u.Addr)
-		if totalSize+estimatedSize > maxPayload {
-			break
-		}
-		filtered = append(filtered, u)
-		totalSize += estimatedSize
+	self := e.members.GetSelf()
+	selfUpdate := &pb.StateUpdate{
+		NodeId:  self.ID,
+		State:   self.State,
+		Version: self.Version,
+		Zone:    self.Zone,
+		Addr:    e.transport.LocalAddr(),
 	}
+	selfSize := 20 + len(selfUpdate.NodeId) + len(selfUpdate.Zone) + len(selfUpdate.Addr)
+	maxPayload := maxUDPPacketSize - 200 - selfSize
 
-	return filtered
+	queued := e.members.GetBroadcasts(maxPayload)
+	updates := make([]*pb.StateUpdate, 0, 1+len(queued))
+	updates = append(updates, selfUpdate)
+	updates = append(updates, queued...)
+	return updates
 }

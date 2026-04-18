@@ -22,6 +22,7 @@ type List struct {
 	self  string
 
 	subscribers []chan StateChange
+	bq          *BroadcastQueue
 }
 
 // StateChange describes a node's previous and new lifecycle state after an update.
@@ -38,6 +39,7 @@ func NewList(selfID, selfAddr, zone string) *List {
 		nodes: make(map[string]*Node),
 		self:  selfID,
 	}
+	l.bq = NewBroadcastQueue(3)
 	l.nodes[selfID] = &Node{
 		ID:      selfID,
 		Addr:    selfAddr,
@@ -45,6 +47,13 @@ func NewList(selfID, selfAddr, zone string) *List {
 		State:   pb.NodeState_NODE_STATE_ALIVE,
 		Version: 1,
 	}
+	l.bq.Enqueue(&pb.StateUpdate{
+		NodeId:  selfID,
+		State:   pb.NodeState_NODE_STATE_ALIVE,
+		Version: 1,
+		Zone:    zone,
+		Addr:    selfAddr,
+	}, 1)
 	return l
 }
 
@@ -80,6 +89,7 @@ func (l *List) ApplyUpdate(update *pb.StateUpdate) bool {
 			State:   update.State,
 			Version: update.Version,
 		}
+		l.bq.Enqueue(update, len(l.nodes))
 		l.notify(StateChange{
 			NodeID:   update.NodeId,
 			NewState: update.State,
@@ -101,6 +111,8 @@ func (l *List) ApplyUpdate(update *pb.StateUpdate) bool {
 	if update.Zone != "" {
 		existing.Zone = update.Zone
 	}
+
+	l.bq.Enqueue(update, len(l.nodes))
 
 	if oldState != update.State {
 		l.notify(StateChange{
@@ -127,6 +139,14 @@ func (l *List) SetState(nodeID string, state pb.NodeState) {
 	oldState := n.State
 	n.State = state
 	n.Version++
+
+	l.bq.Enqueue(&pb.StateUpdate{
+		NodeId:  n.ID,
+		State:   n.State,
+		Version: n.Version,
+		Zone:    n.Zone,
+		Addr:    n.Addr,
+	}, len(l.nodes))
 
 	if oldState != state {
 		l.notify(StateChange{
@@ -191,6 +211,7 @@ func (l *List) AllNodes() []*Node {
 	return result
 }
 
+// GetUpdates returns all node states — used for full-state queries (e.g. HTTP API).
 func (l *List) GetUpdates() []*pb.StateUpdate {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -206,4 +227,15 @@ func (l *List) GetUpdates() []*pb.StateUpdate {
 		})
 	}
 	return updates
+}
+
+// GetBroadcasts returns pending state changes that fit within maxBytes,
+// decrementing each entry's retransmit counter. Exhausted entries are pruned.
+func (l *List) GetBroadcasts(maxBytes int) []*pb.StateUpdate {
+	return l.bq.GetBroadcasts(maxBytes)
+}
+
+// BroadcastQueueLen returns the number of pending broadcast entries.
+func (l *List) BroadcastQueueLen() int {
+	return l.bq.Len()
 }

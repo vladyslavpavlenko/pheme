@@ -73,7 +73,9 @@ func (t *Transport) readLoop() {
 			continue
 		}
 
-		t.bytesRecv.Add(uint64(n))
+		if n > 0 {
+			t.bytesRecv.Add(uint64(n))
+		}
 
 		msg := &pb.GossipMessage{}
 		if err := proto.Unmarshal(buf[:n], msg); err != nil {
@@ -109,7 +111,7 @@ func (t *Transport) SendTo(msg *pb.GossipMessage, addr string) error {
 	}
 
 	written, err := t.conn.WriteToUDP(data, udpAddr)
-	if err == nil {
+	if err == nil && written > 0 {
 		t.bytesSent.Add(uint64(written))
 	}
 	return err
