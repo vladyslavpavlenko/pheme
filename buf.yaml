@@ -7,3 +7,5 @@ lint:
 breaking:
   use:
     - FILE
+  ignore:
+    - pheme/v1/service.proto

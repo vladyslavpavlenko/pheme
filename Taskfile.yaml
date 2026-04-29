@@ -72,17 +72,3 @@ tasks:
     cmds:
       - rm -f {{.BINARY}}
 
-  docker:build:
-    desc: Build Docker image
-    cmds:
-      - docker build -t {{.BINARY}}:latest .
-
-  docker:up:
-    desc: Start docker-compose cluster
-    cmds:
-      - docker compose up --build -d
-
-  docker:down:
-    desc: Stop docker-compose cluster
-    cmds:
-      - docker compose down
