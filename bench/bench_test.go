@@ -1,3 +1,5 @@
+//go:build bench
+
 package bench_test
 
 import (
@@ -9,10 +11,6 @@ import (
 )
 
 func TestComparison(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping comparison benchmark in short mode")
-	}
-
 	sizes := []int{5, 10, 50, 100, 500}
 
 	bench.CheckFDLimit(uint64(sizes[len(sizes)-1]) * 3)

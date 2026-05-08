@@ -43,6 +43,11 @@ tasks:
     cmds:
       - go test -race -v -count=1 ./...
 
+  bench:
+    desc: Run the comparison benchmark against memberlist
+    cmds:
+      - go test -tags bench -v -timeout 60m -count=1 ./bench/...
+
   build:
     desc: Build the binary
     cmds:
