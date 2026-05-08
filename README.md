@@ -8,63 +8,6 @@ Pheme is a sidecar gossip daemon that monitors a co-located service and dissemin
 
 One instance runs alongside each service replica. Nodes find each other via seed addresses and exchange state through periodic UDP probes — no central coordinator, no TCP connections. Peer selection is zone-aware round-robin, which guarantees every peer is probed exactly once per cycle. State changes propagate via a retransmit queue bounded by `RetransmitMult × ⌈log₂(N+1)⌉` retransmits, keeping bandwidth flat as the cluster grows. Probe and suspicion timeouts are per-node and adapt from a sliding RTT window.
 
-## Benchmarks
-
-Measured on Apple Silicon macOS, loopback UDP. Both systems configured with `GossipInterval = ProbeInterval = 200 ms`, 3 indirect probes, suspicion multiplier 4.
-
-> memberlist includes a TCP push-pull sync every 15 s (not counted in its bandwidth figures below). This explains why it converges faster at small cluster sizes — new nodes receive a full state snapshot over TCP immediately on join.
-
-### Convergence time
-
-![Convergence time](assets/charts/convergence.png)
-
-At small sizes memberlist wins because of TCP push-pull. At 50+ nodes the tables turn: Pheme's retransmit queue gives priority to new state announcements, so they propagate before the next push-pull round would even fire.
-
-| Nodes | Pheme  | memberlist |
-|-------|--------|------------|
-| 5     | 202 ms | 101 ms     |
-| 10    | 403 ms | 201 ms     |
-| 50    | 1.8 s  | 43 s       |
-| 100   | 3.9 s  | 58 s       |
-| 500   | 27 s   | ~88 s      |
-
-### Failure detection time
-
-![Failure detection time](assets/charts/failure_detection.png)
-
-Pheme is ~1.2–1.4× slower than memberlist. The gap comes from memberlist's [Lifeguard](https://arxiv.org/abs/1707.00788) dynamic awareness score and TCP fallback probes — mechanisms that add complexity Pheme intentionally omits.
-
-| Nodes | Pheme  | memberlist |
-|-------|--------|------------|
-| 5     | 2.1 s  | 1.2 s      |
-| 10    | 2.2 s  | 1.4 s      |
-| 50    | 2.6 s  | 1.9 s      |
-| 100   | 3.0 s  | 2.2 s      |
-| 500   | 3.7 s  | ~3.0 s     |
-
-### Bandwidth per node (steady state)
-
-![Bandwidth per node](assets/charts/bandwidth.png)
-
-At 500 nodes bandwidth reaches parity. The ~1.8× overhead at smaller sizes comes from mandatory self-advertisement in every ping/ack (~50 bytes), which is the mechanism that guarantees pure-UDP convergence without any TCP state sync.
-
-| Nodes | Pheme    | memberlist |
-|-------|----------|------------|
-| 5     | 1.6 KB/s | 0.9 KB/s   |
-| 10    | 1.8 KB/s | 0.9 KB/s   |
-| 50    | 1.9 KB/s | 1.0 KB/s   |
-| 100   | 1.9 KB/s | 1.0 KB/s   |
-| 500   | 1.1 KB/s | ~1.0 KB/s  |
-
-## How It Works
-
-Pheme implements a SWIM-like protocol:
-
-1. **Probe** — every `GossipInterval` each node selects a peer via round-robin (zone-biased) and sends a UDP ping.
-2. **Indirect probe** — if the direct ping times out, `IndirectChecks` random peers are asked to probe the target on behalf of the sender.
-3. **Suspicion** — a node that fails direct and indirect probes transitions to `SUSPECT`. If it does not refute the suspicion within `SuspicionMultiplier × GossipInterval × log(N)`, it is marked `DEAD`.
-4. **State dissemination** — every ping/ack carries a self-advertisement plus entries from a retransmit queue (priority: entries with most remaining retransmits first). This limits redundant traffic while guaranteeing new state changes propagate quickly.
-5. **Health integration** — Pheme polls a local HTTP health endpoint. If the local service reports unhealthy, Pheme self-declares `SUSPECT` and eventually `DEAD`, notifying all peers even if the gossip port itself is reachable.
 
 ## Quick Start
 
@@ -162,6 +105,64 @@ Example response for `/cluster/status`:
   {"id": "node2", "addr": "127.0.0.1:7948", "zone": "us-east-1b", "state": "SUSPECT", "version": 2}
 ]
 ```
+
+## Benchmarks
+
+Measured on Apple Silicon macOS, loopback UDP. Both systems configured with `GossipInterval = ProbeInterval = 200 ms`, 3 indirect probes, suspicion multiplier 4.
+
+> memberlist includes a TCP push-pull sync every 15 s (not counted in its bandwidth figures below). This explains why it converges faster at small cluster sizes — new nodes receive a full state snapshot over TCP immediately on join.
+
+### Convergence time
+
+![Convergence time](assets/charts/convergence.png)
+
+At small sizes memberlist wins because of TCP push-pull. At 50+ nodes the tables turn: Pheme's retransmit queue gives priority to new state announcements, so they propagate before the next push-pull round would even fire.
+
+| Nodes | Pheme  | memberlist |
+|-------|--------|------------|
+| 5     | 202 ms | 101 ms     |
+| 10    | 403 ms | 201 ms     |
+| 50    | 1.8 s  | 43 s       |
+| 100   | 3.9 s  | 58 s       |
+| 500   | 27 s   | ~88 s      |
+
+### Failure detection time
+
+![Failure detection time](assets/charts/failure_detection.png)
+
+Pheme is ~1.2–1.4× slower than memberlist. The gap comes from memberlist's [Lifeguard](https://arxiv.org/abs/1707.00788) dynamic awareness score and TCP fallback probes — mechanisms that add complexity Pheme intentionally omits.
+
+| Nodes | Pheme  | memberlist |
+|-------|--------|------------|
+| 5     | 2.1 s  | 1.2 s      |
+| 10    | 2.2 s  | 1.4 s      |
+| 50    | 2.6 s  | 1.9 s      |
+| 100   | 3.0 s  | 2.2 s      |
+| 500   | 3.7 s  | ~3.0 s     |
+
+### Bandwidth per node (steady state)
+
+![Bandwidth per node](assets/charts/bandwidth.png)
+
+At 500 nodes bandwidth reaches parity. The ~1.8× overhead at smaller sizes comes from mandatory self-advertisement in every ping/ack (~50 bytes), which is the mechanism that guarantees pure-UDP convergence without any TCP state sync.
+
+| Nodes | Pheme    | memberlist |
+|-------|----------|------------|
+| 5     | 1.6 KB/s | 0.9 KB/s   |
+| 10    | 1.8 KB/s | 0.9 KB/s   |
+| 50    | 1.9 KB/s | 1.0 KB/s   |
+| 100   | 1.9 KB/s | 1.0 KB/s   |
+| 500   | 1.1 KB/s | ~1.0 KB/s  |
+
+## How It Works
+
+Pheme implements a SWIM-like protocol:
+
+1. **Probe** — every `GossipInterval` each node selects a peer via round-robin (zone-biased) and sends a UDP ping.
+2. **Indirect probe** — if the direct ping times out, `IndirectChecks` random peers are asked to probe the target on behalf of the sender.
+3. **Suspicion** — a node that fails direct and indirect probes transitions to `SUSPECT`. If it does not refute the suspicion within `SuspicionMultiplier × GossipInterval × log(N)`, it is marked `DEAD`.
+4. **State dissemination** — every ping/ack carries a self-advertisement plus entries from a retransmit queue (priority: entries with most remaining retransmits first). This limits redundant traffic while guaranteeing new state changes propagate quickly.
+5. **Health integration** — Pheme polls a local HTTP health endpoint. If the local service reports unhealthy, Pheme self-declares `SUSPECT` and eventually `DEAD`, notifying all peers even if the gossip port itself is reachable.
 
 ## Comparison with HashiCorp memberlist
 
