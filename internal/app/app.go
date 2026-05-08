@@ -3,12 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
-	"net"
 	nethttp "net/http"
 	"os"
 	"time"
 
-	grpcapi "github.com/vladyslavpavlenko/pheme/internal/api/grpc"
 	restapi "github.com/vladyslavpavlenko/pheme/internal/api/rest"
 	"github.com/vladyslavpavlenko/pheme/internal/config"
 	pb "github.com/vladyslavpavlenko/pheme/internal/gen/pheme/v1"
@@ -16,8 +14,6 @@ import (
 	"github.com/vladyslavpavlenko/pheme/internal/healthcheck"
 	"github.com/vladyslavpavlenko/pheme/internal/logger"
 	"github.com/vladyslavpavlenko/pheme/internal/membership"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 type App struct {
@@ -28,7 +24,6 @@ type App struct {
 	engine     *gossip.Engine
 	hc         *healthcheck.Checker
 	httpServer *nethttp.Server
-	grpcServer *grpc.Server
 }
 
 func New(cfg *config.Config, l *logger.Logger) (*App, error) {
@@ -52,11 +47,6 @@ func New(cfg *config.Config, l *logger.Logger) (*App, error) {
 	mux := nethttp.NewServeMux()
 	httpHandler.RegisterRoutes(mux)
 
-	grpcServer := grpc.NewServer()
-	grpcService := grpcapi.NewServer(members, l)
-	pb.RegisterClusterServiceServer(grpcServer, grpcService)
-	reflection.Register(grpcServer)
-
 	httpServer := &nethttp.Server{
 		Addr:              cfg.APIAddr,
 		Handler:           mux,
@@ -70,7 +60,6 @@ func New(cfg *config.Config, l *logger.Logger) (*App, error) {
 		engine:     engine,
 		hc:         hc,
 		httpServer: httpServer,
-		grpcServer: grpcServer,
 	}, nil
 }
 
@@ -99,19 +88,6 @@ func (a *App) Start() error {
 		}
 	}()
 
-	grpcAddr := incrementPort(a.cfg.APIAddr)
-	lc := net.ListenConfig{}
-	grpcLis, err := lc.Listen(context.Background(), "tcp", grpcAddr)
-	if err != nil {
-		return fmt.Errorf("listen gRPC on %s: %w", grpcAddr, err)
-	}
-	go func() {
-		a.l.Info("gRPC API listening", logger.Param("addr", grpcAddr))
-		if err := a.grpcServer.Serve(grpcLis); err != nil {
-			a.l.Error("gRPC server error", logger.Error(err))
-		}
-	}()
-
 	return nil
 }
 
@@ -121,7 +97,6 @@ func (a *App) Stop(ctx context.Context) {
 	if err := a.httpServer.Shutdown(ctx); err != nil {
 		a.l.Warn("HTTP server shutdown error", logger.Error(err))
 	}
-	a.grpcServer.GracefulStop()
 	a.engine.Stop()
 	a.hc.Stop()
 
@@ -161,16 +136,4 @@ func (a *App) healthWatchLoop() {
 			unhealthySince = time.Time{}
 		}
 	}
-}
-
-func incrementPort(addr string) string {
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return addr
-	}
-	var p int
-	if _, err := fmt.Sscanf(port, "%d", &p); err != nil {
-		return addr
-	}
-	return net.JoinHostPort(host, fmt.Sprintf("%d", p+1))
 }

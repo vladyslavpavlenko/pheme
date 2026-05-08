@@ -5,3 +5,5 @@
 *.out
 /bin/
 vendor/
+/pheme
+/cmd

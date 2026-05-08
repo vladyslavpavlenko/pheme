@@ -10,6 +10,7 @@ linters:
     paths:
       - tests
       - _test\.go
+      - internal/gen
   enable:
     # Code correctness and bug prevention
     - govet
